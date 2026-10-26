@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fake SMTP Inbox</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #667085; --line: #e3e6eb;
+    --accent: #2f6fde; --sel: #e8f0fd; --danger: #c2372b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14171c; --panel: #1c2027; --text: #e5e8ee; --muted: #98a2b3; --line: #2c323c; --accent: #6b9cf0; --sel: #24324a; --danger: #ef6b5f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+  header { display: flex; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 16px; margin: 0 8px 0 0; white-space: nowrap; }
+  header .hint { color: var(--muted); font-size: 12px; flex: 1; }
+  input[type=search] { padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); width: 260px; max-width: 40vw; }
+  button { padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.danger { color: var(--danger); }
+  main { flex: 1; display: grid; grid-template-columns: minmax(280px, 380px) 1fr; min-height: 0; }
+  #list { overflow: auto; border-right: 1px solid var(--line); background: var(--panel); }
+  .item { padding: 10px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .item:hover { background: var(--bg); }
+  .item.sel { background: var(--sel); }
+  .item .subj { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .meta { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .empty { padding: 24px; color: var(--muted); }
+  #detail { display: flex; flex-direction: column; min-height: 0; }
+  #head { padding: 14px 18px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  #head h2 { margin: 0 0 8px; font-size: 18px; }
+  #head table { border-collapse: collapse; font-size: 13px; }
+  #head td { padding: 1px 10px 1px 0; vertical-align: top; }
+  #head td:first-child { color: var(--muted); white-space: nowrap; }
+  .tabs { display: flex; gap: 4px; padding: 8px 18px 0; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .tabs button { border-bottom: none; border-radius: 6px 6px 0 0; }
+  .tabs button.on { border-color: var(--accent); color: var(--accent); }
+  .tabs .spacer { flex: 1; }
+  #body { flex: 1; min-height: 0; overflow: auto; }
+  iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+  pre { margin: 0; padding: 16px 18px; white-space: pre-wrap; word-break: break-word; font: 12.5px/1.45 ui-monospace, Consolas, monospace; }
+  .atts { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .atts a { font-size: 12px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 10px; color: var(--accent); text-decoration: none; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; grid-template-rows: 40vh 1fr; } #list { border-right: 0; border-bottom: 1px solid var(--line); } header .hint { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Fake SMTP Inbox</h1>
+  <span class="hint">SMTP 127.0.0.1:25 — every message is stored here, nothing is delivered</span>
+  <input type="search" id="q" placeholder="Search subject, from, to">
+  <button class="danger" id="clear">Delete all</button>
+</header>
+<main>
+  <div id="list"></div>
+  <section id="detail"><div class="empty">Select a message.</div></section>
+</main>
+<script>
+const listEl = document.getElementById('list');
+const detailEl = document.getElementById('detail');
+const qEl = document.getElementById('q');
+let selected = null, lastKey = '', tab = 'html';
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const when = d => new Date(d).toLocaleString();
+
+async function loadList() {
+  const res = await fetch('api/messages/?q=' + encodeURIComponent(qEl.value));
+  const items = await res.json();
+  const key = items.map(m => m.id).join(',') + '|' + selected;
+  if (key === lastKey) return;
+  lastKey = key;
+  listEl.innerHTML = items.length ? items.map(m => `
+    <div class="item ${m.id === selected ? 'sel' : ''}" data-id="${m.id}">
+      <div class="subj">${esc(m.subject || '(no subject)')}</div>
+      <div class="meta">To: ${esc(m.rcptTo.join(', '))}</div>
+      <div class="meta">${esc(when(m.receivedUtc))} · From: ${esc(m.mailFrom)}${m.attachments ? ' · 📎 ' + m.attachments : ''}</div>
+    </div>`).join('') : '<div class="empty">No messages yet. Point an app at SMTP 127.0.0.1:25 and send one.</div>';
+}
+
+async function show(id) {
+  selected = id; lastKey = '';
+  loadList();
+  const res = await fetch('api/messages/' + id);
+  if (!res.ok) { detailEl.innerHTML = '<div class="empty">Message not found.</div>'; return; }
+  const m = await res.json();
+  if (!m.hasHtml && tab === 'html') tab = 'text';
+  const rows = [['From', m.from], ['To', m.to], ['Cc', m.cc], ['Bcc', m.bcc], ['Reply-To', m.replyTo], ['Date', m.date && when(m.date)]]
+    .filter(r => r[1]).map(r => `<tr><td>${r[0]}</td><td>${esc(r[1])}</td></tr>`).join('');
+  const atts = m.attachments.map(a => `<a href="api/messages/${id}/attachments/${a.index}">${esc(a.name)}</a>`).join('');
+  detailEl.innerHTML = `
+    <div id="head"><h2>${esc(m.subject || '(no subject)')}</h2><table>${rows}</table>${atts ? `<div class="atts">${atts}</div>` : ''}</div>
+    <div class="tabs">
+      ${m.hasHtml ? '<button data-tab="html">HTML</button>' : ''}
+      <button data-tab="text">Text</button><button data-tab="headers">Headers</button>
+      <span class="spacer"></span>
+      <a href="api/messages/${id}/raw"><button>Download .eml</button></a>
+      <button class="danger" id="del">Delete</button>
+    </div>
+    <div id="body"></div>`;
+  const body = detailEl.querySelector('#body');
+  const render = () => {
+    detailEl.querySelectorAll('.tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+    if (tab === 'html') body.innerHTML = `<iframe sandbox="allow-popups allow-popups-to-escape-sandbox" src="api/messages/${id}/html"></iframe>`;
+    else if (tab === 'text') body.innerHTML = `<pre>${esc(m.text || '(no text part)')}</pre>`;
+    else body.innerHTML = `<pre>${m.headers.map(h => esc(h.name) + ': ' + esc(h.value)).join('\n')}</pre>`;
+  };
+  detailEl.querySelectorAll('.tabs [data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
+  detailEl.querySelector('#del').onclick = async () => {
+    await fetch('api/messages/' + id, { method: 'DELETE' });
+    selected = null; detailEl.innerHTML = '<div class="empty">Deleted.</div>'; loadList();
+  };
+  render();
+}
+
+listEl.onclick = e => { const it = e.target.closest('.item'); if (it) show(it.dataset.id); };
+qEl.oninput = () => { lastKey = ''; loadList(); };
+document.getElementById('clear').onclick = async () => {
+  if (!confirm('Delete every stored message?')) return;
+  await fetch('api/messages/', { method: 'DELETE' });
+  selected = null; detailEl.innerHTML = '<div class="empty">Select a message.</div>'; lastKey = ''; loadList();
+};
+loadList();
+setInterval(loadList, 3000);
+</script>
+</body>
+</html>
