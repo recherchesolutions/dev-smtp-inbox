@@ -32,7 +32,7 @@ $ErrorActionPreference = 'Stop'
 
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run this script from an elevated (Administrator) PowerShell.' }
-if (-not (Test-Path $NssmPath)) { throw "nssm.exe not found at $NssmPath. Download it from https://nssm.cc/ or pass -NssmPath." }
+if (-not (Test-Path $NssmPath)) { throw "nssm.exe not found at $NssmPath. Download it from https://nssm.cc/download (copy win64\nssm.exe to C:\Tools) or pass -NssmPath." }
 
 function Invoke-Nssm { & $NssmPath @args | Out-Null; if ($LASTEXITCODE -ne 0) { throw "nssm $($args -join ' ') failed ($LASTEXITCODE)" } }
 

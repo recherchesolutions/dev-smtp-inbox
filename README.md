@@ -25,7 +25,16 @@ Send-MailMessage -SmtpServer localhost -Port 25 -From app@example.test -To someo
 
 ## Run as a Windows service (NSSM)
 
-The scripts use [NSSM](https://nssm.cc/), expected at `C:\Tools\nssm.exe` (or pass `-NssmPath`). From an elevated PowerShell in the repo folder:
+The scripts use [NSSM](https://nssm.cc/) (the Non-Sucking Service Manager), expected at `C:\Tools\nssm.exe` (or pass `-NssmPath`).
+
+**Get nssm.exe:** download the zip from https://nssm.cc/download, extract it, and copy `win64\nssm.exe` (or `win32\nssm.exe` on 32-bit Windows) to `C:\Tools\`:
+
+```powershell
+New-Item -ItemType Directory -Force C:\Tools | Out-Null
+Copy-Item <extracted folder>\win64\nssm.exe C:\Tools\
+```
+
+Then, from an elevated PowerShell in the repo folder:
 
 ```powershell
 .\scripts\install-service.ps1
