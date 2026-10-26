@@ -42,25 +42,30 @@ Then, from an elevated PowerShell in the repo folder:
 
 The install script:
 
-1. publishes the app to `.\publish` (skip with `-SkipPublish`);
-2. registers the service `FakeSmtp` with delayed automatic start and restart on exit;
-3. runs it as `NT AUTHORITY\LocalService`, with read access to the program folder and write access to the mail and log folders only;
-4. writes service output to `.\logs\service.log`, rotated at 10 MB.
+1. asks where received emails should be stored (press Enter for the default shown);
+2. publishes the app to `.\publish` (skip with `-SkipPublish`);
+3. writes your settings (mail folder, ports, message limit) into `.\publish\appsettings.json`;
+4. registers the service `FakeSmtp` with delayed automatic start and restart on exit;
+5. runs it as `NT AUTHORITY\LocalService`, with read access to the program folder and write access to the mail and log folders only;
+6. writes service output to `.\logs\service.log`, rotated at 10 MB.
 
-Re-running the script reinstalls the service and keeps stored mail.
+Re-running the script reinstalls the service and keeps your settings: the defaults it offers are the values the installed copy already uses. If you pick a different mail folder, it offers to move the stored messages there.
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |
+| `-MailFolder` | asked; current setting, else `.\mail` | Where messages are stored. Passing it skips the question |
+| `-SmtpPort` | current setting, else `25` | SMTP port (127.0.0.1 only) |
+| `-WebPort` | current setting, else `5025` | Web inbox port (127.0.0.1 only) |
+| `-MaxMessages` | current setting, else `0` | Keep only the newest N messages; `0` keeps everything |
+| `-NoPrompt` | off | Ask nothing: use the defaults and move stored mail if the folder changes (for unattended installs) |
 | `-NssmPath` | `C:\Tools\nssm.exe` | Path to nssm.exe |
 | `-ServiceName` | `FakeSmtp` | Windows service name |
 | `-InstallDir` | `.\publish` | Where the app is published and run from |
-| `-MailFolder` | `.\mail` | Where messages are stored |
 | `-LogFolder` | `.\logs` | Service output logs |
-| `-SmtpPort` | `25` | SMTP port (127.0.0.1 only) |
-| `-WebPort` | `5025` | Web inbox port (127.0.0.1 only) |
-| `-MaxMessages` | `0` | Keep only the newest N messages; `0` keeps everything |
 | `-Account` | `NT AUTHORITY\LocalService` | Service account |
 | `-SkipPublish` | off | Use the existing `-InstallDir` build |
+
+To change a setting later without reinstalling, edit `.\publish\appsettings.json` and run `Restart-Service FakeSmtp`. If you point `MailFolder` somewhere new this way, give the service account write access to it, or re-run the install script, which does that for you.
 
 Remove the service (stored mail and logs are kept):
 
@@ -72,7 +77,7 @@ Manage it like any service: `Get-Service FakeSmtp`, `Restart-Service FakeSmtp`.
 
 ## Configuration
 
-Settings are in `appsettings.json`. Any of them can be overridden with environment variables (`FakeSmtp__SmtpPort=2525`, `Urls=http://127.0.0.1:8025`) or command-line arguments (`--FakeSmtp:SmtpPort 2525 --urls http://127.0.0.1:8025`).
+Settings are in `appsettings.json` (for the service: `.\publish\appsettings.json`, which the install script fills in). When running from the console, any of them can also be overridden with environment variables (`FakeSmtp__SmtpPort=2525`, `Urls=http://127.0.0.1:8025`) or command-line arguments (`--FakeSmtp:SmtpPort 2525 --urls http://127.0.0.1:8025`). JSON paths need doubled backslashes: `"D:\\FakeSmtp\\mail"`.
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
