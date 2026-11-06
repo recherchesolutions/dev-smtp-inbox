@@ -2,6 +2,8 @@
 
 A local SMTP server for development and testing. Point any application's outgoing mail at it: every message is stored and shown in a web inbox, and nothing is ever delivered to a real recipient.
 
+Created by John Lee, [Recherche Solutions LLC](https://recherchesolutions.com). Free for anyone to use under the [MIT License](LICENSE).
+
 - **SMTP** on `127.0.0.1:25`. It accepts any sender, recipient and SMTP AUTH login (`PLAIN` / `LOGIN`), so apps configured with credentials work unchanged.
 - **Web inbox** at http://127.0.0.1:5025: list and search, HTML / text / headers views, attachments, `.eml` download, delete one or all. It refreshes every 3 seconds.
 - **No database.** Each message is a pair of files: the exact `.eml` received plus a small `.json` summary.
@@ -137,4 +139,4 @@ Messages are saved in the mail folder as `<id>.eml` (the exact bytes received af
 
 ## License
 
-No license has been chosen yet, so all rights are reserved. Open an issue if you would like to use it under specific terms.
+[MIT](LICENSE): free to use, copy, modify and distribute, including commercially. Keep the copyright notice. Provided as is, without warranty.
